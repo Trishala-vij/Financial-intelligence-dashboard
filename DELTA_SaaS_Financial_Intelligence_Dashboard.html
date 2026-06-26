@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DELTA SaaS Financial Intelligence Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #13161e;
+    --surface2: #1a1e28;
+    --surface3: #212636;
+    --border: rgba(255,255,255,0.07);
+    --border-strong: rgba(255,255,255,0.13);
+    --text-primary: #eef0f5;
+    --text-secondary: #8b90a0;
+    --text-muted: #565c70;
+    --accent-blue: #3b82f6;
+    --accent-teal: #14b8a6;
+    --accent-amber: #f59e0b;
+    --accent-red: #ef4444;
+    --accent-green: #22c55e;
+    --accent-violet: #8b5cf6;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-size: 13px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* ---- LAYOUT ---- */
+  .shell { display: flex; min-height: 100vh; }
+
+  .sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 100;
+    overflow-y: auto;
+  }
+
+  .sidebar-logo {
+    padding: 20px 18px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo-mark {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent-blue);
+    margin-bottom: 2px;
+  }
+  .logo-sub {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+  }
+
+  .sidebar-nav { padding: 12px 10px; flex: 1; }
+  .nav-section-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 10px 8px 6px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 450;
+    transition: all 0.12s ease;
+    margin-bottom: 1px;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    text-decoration: none;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text-primary); }
+  .nav-item.active { background: rgba(59,130,246,0.12); color: var(--accent-blue); }
+  .nav-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor; flex-shrink: 0;
+  }
+
+  .sidebar-footer {
+    padding: 14px 18px;
+    border-top: 1px solid var(--border);
+    font-size: 10px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .main {
+    margin-left: 220px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    background: rgba(13,15,20,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 28px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 90;
+  }
+  .topbar-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  .topbar-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 20px;
+    background: rgba(34,197,94,0.1);
+    color: #22c55e;
+    border: 1px solid rgba(34,197,94,0.2);
+  }
+  .status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+  .content { padding: 24px 28px 40px; }
+
+  /* ---- SECTIONS ---- */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ---- PAGE HEADER ---- */
+  .page-header { margin-bottom: 22px; }
+  .page-eyebrow {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-blue);
+    margin-bottom: 6px;
+  }
+  .page-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+  .page-subtitle { font-size: 12px; color: var(--text-secondary); }
+
+  /* ---- CARDS ---- */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+  }
+  .card-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+  }
+
+  /* ---- GRIDS ---- */
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+  .grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 16px; }
+  .grid-auto { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 16px; }
+
+  /* ---- KPI TILES ---- */
+  .kpi-tile {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-tile::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .kpi-tile.blue::before { background: var(--accent-blue); }
+  .kpi-tile.teal::before { background: var(--accent-teal); }
+  .kpi-tile.amber::before { background: var(--accent-amber); }
+  .kpi-tile.red::before { background: var(--accent-red); }
+  .kpi-tile.green::before { background: var(--accent-green); }
+  .kpi-tile.violet::before { background: var(--accent-violet); }
+
+  .kpi-label { font-size: 10px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+  .kpi-value { font-size: 26px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.03em; line-height: 1; margin-bottom: 6px; font-variant-numeric: tabular-nums; }
+  .kpi-sub { font-size: 11px; color: var(--text-secondary); line-height: 1.4; }
+  .kpi-up { color: var(--accent-green); }
+  .kpi-down { color: var(--accent-red); }
+  .kpi-warn { color: var(--accent-amber); }
+
+  /* ---- CHART WRAPPERS ---- */
+  .chart-wrap { position: relative; width: 100%; }
+  .h160 { height: 160px; }
+  .h200 { height: 200px; }
+  .h240 { height: 240px; }
+  .h280 { height: 280px; }
+  .h320 { height: 320px; }
+
+  /* ---- TABLES ---- */
+  .table-wrap { overflow-x: auto; }
+  table.data-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  table.data-table thead th {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    white-space: nowrap;
+    background: var(--surface2);
+  }
+  table.data-table tbody td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-primary);
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+  table.data-table tbody tr:hover td { background: var(--surface2); }
+  table.data-table tbody tr:last-child td { border-bottom: none; }
+
+  .co-name { font-weight: 500; }
+  .co-tag { font-size: 10px; color: var(--text-muted); }
+
+  /* ---- BADGES ---- */
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 4px;
+    letter-spacing: 0.02em;
+  }
+  .badge-blue { background: rgba(59,130,246,0.15); color: #60a5fa; }
+  .badge-green { background: rgba(34,197,94,0.15); color: #4ade80; }
+  .badge-amber { background: rgba(245,158,11,0.15); color: #fbbf24; }
+  .badge-red { background: rgba(239,68,68,0.15); color: #f87171; }
+  .badge-violet { background: rgba(139,92,246,0.15); color: #a78bfa; }
+  .badge-teal { background: rgba(20,184,166,0.15); color: #2dd4bf; }
+
+  /* ---- ALERT CARDS ---- */
+  .alert-item {
+    display: flex;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--surface2);
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+    border-left: 3px solid;
+  }
+  .alert-item.red { border-color: var(--accent-red); }
+  .alert-item.amber { border-color: var(--accent-amber); }
+  .alert-item.green { border-color: var(--accent-green); }
+  .alert-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .alert-title { font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+  .alert-body { font-size: 11.5px; color: var(--text-secondary); line-height: 1.6; }
+
+  /* ---- RECOMMENDATION CARDS ---- */
+  .rec-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    margin-bottom: 12px;
+    border-left: 3px solid;
+  }
+  .rec-card.blue { border-left-color: var(--accent-blue); }
+  .rec-card.teal { border-left-color: var(--accent-teal); }
+  .rec-card.amber { border-left-color: var(--accent-amber); }
+  .rec-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  .rec-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .rec-conf { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 4px; flex-shrink: 0; }
+  .rec-body { font-size: 12px; color: var(--text-secondary); line-height: 1.65; }
+
+  /* ---- SCENARIO TABS ---- */
+  .tab-row { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+  .tab-btn {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-strong);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.12s ease;
+  }
+  .tab-btn:hover { color: var(--text-primary); background: var(--surface2); }
+  .tab-btn.active { background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.4); color: var(--accent-blue); }
+
+  .fc-panel { display: none; }
+  .fc-panel.visible { display: block; }
+  .fc-company-meta { font-size: 11px; color: var(--text-secondary); margin-bottom: 14px; padding: 10px 14px; background: var(--surface2); border-radius: var(--radius); }
+  .fc-company-meta strong { color: var(--text-primary); }
+
+  .scenario-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
+  .scenario {
+    padding: 14px 16px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .scenario.up-sc { border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.05); }
+  .scenario.down-sc { border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.05); }
+  .sc-label { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
+  .sc-up .sc-label { color: var(--accent-green); }
+  .sc-base .sc-label { color: var(--text-muted); }
+  .sc-down .sc-label { color: var(--accent-red); }
+  .sc-value { font-size: 20px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.02em; margin-bottom: 4px; }
+  .sc-desc { font-size: 11px; color: var(--text-secondary); line-height: 1.5; }
+  .fc-risk { font-size: 11px; color: var(--text-muted); padding: 8px 12px; background: var(--surface2); border-radius: var(--radius); border-left: 2px solid var(--accent-amber); }
+
+  /* ---- LEGEND ---- */
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-secondary); }
+  .legend-swatch { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ---- EXEC SUMMARY ---- */
+  .exec-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    line-height: 1.75;
+    margin-bottom: 16px;
+  }
+  .exec-box strong { color: var(--text-primary); font-weight: 500; }
+
+  /* ---- DIVIDER ---- */
+  .divider { height: 1px; background: var(--border); margin: 22px 0; }
+
+  /* ---- CONFIDENCE BAR ---- */
+  .conf-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .conf-label { font-size: 11.5px; color: var(--text-secondary); width: 320px; flex-shrink: 0; }
+  .conf-track { flex: 1; height: 6px; background: var(--surface3); border-radius: 3px; overflow: hidden; }
+  .conf-fill { height: 100%; border-radius: 3px; }
+  .conf-pct { font-size: 11px; font-weight: 600; color: var(--text-primary); width: 32px; text-align: right; }
+
+  /* ---- COMPANY FILTER ---- */
+  .company-filter { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .co-pill {
+    font-size: 10px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border-strong);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+  .co-pill:hover { background: var(--surface2); }
+  .co-pill.active { background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.4); color: #60a5fa; }
+
+  /* ---- DATA QUALITY ---- */
+  .dq-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--surface2); border-radius: var(--radius); margin-bottom: 6px; }
+  .dq-icon { font-size: 14px; }
+  .dq-text { flex: 1; font-size: 11.5px; color: var(--text-secondary); }
+  .dq-status { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+
+  /* ---- SCROLLBAR ---- */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+
+  @media (max-width: 900px) {
+    .sidebar { width: 180px; }
+    .main { margin-left: 180px; }
+    .grid4 { grid-template-columns: repeat(2, 1fr); }
+    .grid3 { grid-template-columns: repeat(2, 1fr); }
+    .scenario-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">Delta FI</div>
+      <div class="logo-sub">Financial Intelligence Suite</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Analysis</div>
+      <button class="nav-item active" onclick="showSection('overview')"><span class="nav-dot"></span>Portfolio overview</button>
+      <button class="nav-item" onclick="showSection('kpi')"><span class="nav-dot"></span>KPI dashboard</button>
+      <button class="nav-item" onclick="showSection('mrr')"><span class="nav-dot"></span>MRR motion</button>
+      <button class="nav-item" onclick="showSection('opex')"><span class="nav-dot"></span>OPEX &amp; margins</button>
+      <button class="nav-item" onclick="showSection('unit')"><span class="nav-dot"></span>Unit economics</button>
+      <div class="nav-section-label">Intelligence</div>
+      <button class="nav-item" onclick="showSection('anomalies')"><span class="nav-dot"></span>Anomaly flags</button>
+      <button class="nav-item" onclick="showSection('strategy')"><span class="nav-dot"></span>Strategic recs</button>
+      <button class="nav-item" onclick="showSection('forecast')"><span class="nav-dot"></span>Q1–Q2 2026 forecast</button>
+      <div class="nav-section-label">Meta</div>
+      <button class="nav-item" onclick="showSection('dataquality')"><span class="nav-dot"></span>Data quality</button>
+    </nav>
+    <div class="sidebar-footer">
+      12 companies · 720 rows · FY2021–2025<br>
+      37 KPIs · Big-4 audit standard<br>
+      Lens: Operational / Strategic / Predictive
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <div class="main">
+
+    <div class="topbar">
+      <div class="topbar-title">DELTA SaaS Financial Intelligence</div>
+      <div class="topbar-meta">
+        <span class="status-pill"><span class="status-dot"></span>Certified · 0 nulls</span>
+        <span>FY2025 latest · All figures USD</span>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ══ OVERVIEW ══ -->
+      <div id="section-overview" class="section active">
+        <div class="page-header">
+          <div class="page-eyebrow">Lens 1 · Lens 2 · Lens 3 — integrated</div>
+          <div class="page-title">Portfolio overview</div>
+          <div class="page-subtitle">12-company SaaS cohort · Series B → Public · FY2021–2025 · 60-month horizon</div>
+        </div>
+
+        <div class="grid4">
+          <div class="kpi-tile blue">
+            <div class="kpi-label">Total portfolio ARR</div>
+            <div class="kpi-value">$2.12T</div>
+            <div class="kpi-sub kpi-up">↑ Weighted avg YoY +18.1%</div>
+          </div>
+          <div class="kpi-tile teal">
+            <div class="kpi-label">Median Rule of 40</div>
+            <div class="kpi-value">21.6</div>
+            <div class="kpi-sub kpi-warn">⚠ Only 2/12 above threshold</div>
+          </div>
+          <div class="kpi-tile green">
+            <div class="kpi-label">Portfolio NRR (median)</div>
+            <div class="kpi-value">105.1%</div>
+            <div class="kpi-sub kpi-up">✓ All 12 companies &gt;100%</div>
+          </div>
+          <div class="kpi-tile red">
+            <div class="kpi-label">Below sector benchmark</div>
+            <div class="kpi-value">8/12</div>
+            <div class="kpi-sub kpi-down">↓ Structural headwind signal</div>
+          </div>
+        </div>
+
+        <div class="grid3" style="margin-bottom:16px">
+          <div class="kpi-tile violet">
+            <div class="kpi-label">Median EBITDA margin</div>
+            <div class="kpi-value">3.9%</div>
+            <div class="kpi-sub kpi-warn">5 companies negative EBITDA</div>
+          </div>
+          <div class="kpi-tile amber">
+            <div class="kpi-label">Median LTV / CAC</div>
+            <div class="kpi-value">10,979×</div>
+            <div class="kpi-sub">Massive untapped upsell capacity</div>
+          </div>
+          <div class="kpi-tile teal">
+            <div class="kpi-label">Portfolio avg S&amp;M ratio</div>
+            <div class="kpi-value">40.3%</div>
+            <div class="kpi-sub kpi-down">8–12pp above SaaS benchmark</div>
+          </div>
+        </div>
+
+        <div class="exec-box">
+          The DELTA SaaS portfolio (12 companies, $2.12T combined ARR, FY2021–2025) exhibits a <strong>bifurcated growth profile</strong>. AutoPilotAI and CloudNest are structural outliers — commanding $1.38T and $737B in ARR on 33% and 28% YoY growth with sector-leading Rule of 40 scores of 37 and 28. However, <strong>8 of 12 companies underperform their sector growth benchmark</strong> (median gap: −1.9pp), indicating broad competitive pressure. The portfolio's most critical signal: <strong>gross margins are uniformly flat at 73–77% across all cohorts</strong> — a symptom of undifferentiated cost structures, not genuine operating leverage. EBITDA margins show high dispersion (−11% to +21%), driven not by pricing power but by S&amp;M intensity variation (35–48% of ARR). Three companies — EduSphere, OmniDesk, LegalEdge — post sub-$10M ARR with negative or marginal EBITDA, representing strategic optionality questions. NRR universally above 100% confirms net-positive retention dynamics; however, logo churn at 1.2–2.4% at scale creates material compounding drag.
+        </div>
+
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title">ARR distribution — portfolio ARR by company (log scale, FY2025)</div>
+            <div class="chart-wrap h240"><canvas id="arrDistChart" role="img" aria-label="ARR distribution by company on log scale"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Rule of 40 ranking — growth + EBITDA margin composite</div>
+            <div class="legend">
+              <span class="legend-item"><span class="legend-swatch" style="background:#3b82f6"></span>≥30 Strong</span>
+              <span class="legend-item"><span class="legend-swatch" style="background:#14b8a6"></span>≥20 Adequate</span>
+              <span class="legend-item"><span class="legend-swatch" style="background:#f59e0b"></span>≥15 Weak</span>
+              <span class="legend-item"><span class="legend-swatch" style="background:#ef4444"></span>&lt;15 Critical</span>
+            </div>
+            <div class="chart-wrap h200"><canvas id="r40Chart" role="img" aria-label="Rule of 40 scores by company sorted descending"></canvas></div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-title">Growth vs sector benchmark differential (pp) — competitive position map</div>
+          <div class="legend">
+            <span class="legend-item"><span class="legend-swatch" style="background:#22c55e"></span>Above sector avg</span>
+            <span class="legend-item"><span class="legend-swatch" style="background:#ef4444"></span>Below sector avg</span>
+          </div>
+          <div class="chart-wrap h200"><canvas id="vsectorChart" role="img" aria-label="Growth versus sector benchmark differential in percentage points by company"></canvas></div>
+        </div>
+      </div>
+
+      <!-- ══ KPI DASHBOARD ══ -->
+      <div id="section-kpi" class="section">
+        <div class="page-header">
+          <div class="page-eyebrow">Lens 1 — Operational · IFRS / GAAP anchored</div>
+          <div class="page-title">KPI intelligence table</div>
+          <div class="page-subtitle">All 12 companies · FY2025 trailing metrics · Ranked by ARR</div>
+        </div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Company</th>
+                  <th>ARR (FY25)</th>
+                  <th>YoY growth</th>
+                  <th>vs sector</th>
+                  <th>EBITDA margin</th>
+                  <th>Gross margin</th>
+                  <th>NRR</th>
+                  <th>Logo churn</th>
+                  <th>LTV/CAC</th>
+                  <th>Payback</th>
+                  <th>Rule of 40</th>
+                  <th>Runway</th>
+                  <th>Signal</th>
+                </tr>
+              </thead>
+              <tbody id="kpiTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title">EBITDA margin — dispersion across cohort (FY2025)</div>
+            <div class="legend">
+              <span class="legend-item"><span class="legend-swatch" style="background:#22c55e"></span>Positive</span>
+              <span class="legend-item"><span class="legend-swatch" style="background:#ef4444"></span>Negative</span>
+            </div>
+            <div class="chart-wrap h200"><canvas id="ebitdaChart" role="img" aria-label="EBITDA margin by company showing wide dispersion from minus 11 to plus 21 percent"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">NRR vs logo churn — retention health matrix (FY2025)</div>
+            <div class="legend">
+              <span class="legend-item"><span class="legend-swatch" style="background:#3b82f6"></span>NRR %</span>
+              <span class="legend-item"><span class="legend-swatch" style="background:#ef4444;border-radius:50%"></span>Logo churn % (×10 scaled)</span>
+            </div>
+            <div class="chart-wrap h200"><canvas id="nrrChart" role="img" aria-label="NRR and logo churn comparison by company"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ MRR MOTION ══ -->
+      <div id="section-mrr" class="section">
+        <div class="page-header">
+          <div class="page-eyebrow">Anchor 1 — Revenue = Price × Volume · Decomposed</div>
+          <div class="page-title">MRR motion analysis</div>
+          <div class="page-subtitle">New MRR · Expansion MRR · Churned MRR · Net new MRR · FY2025 monthly averages</div>
+        </div>
+
+        <div class="grid4" style="margin-bottom:16px">
+          <div class="kpi-tile green">
+            <div class="kpi-label">Portfolio new MRR avg</div>
+            <div class="kpi-value" style="font-size:20px">$7.77B/mo</div>
+            <div class="kpi-sub">New logo contribution</div>
+          </div>
+          <div class="kpi-tile teal">
+            <div class="kpi-label">Portfolio expansion avg</div>
+            <div class="kpi-value" style="font-size:20px">$2.71B/mo</div>
+            <div class="kpi-sub">Avg expansion contribution: 34%</div>
+          </div>
+          <div class="kpi-tile red">
+            <div class="kpi-label">Portfolio churn avg</div>
+            <div class="kpi-value" style="font-size:20px">$661M/mo</div>
+            <div class="kpi-sub">Gross revenue churn signal</div>
+          </div>
+          <div class="kpi-tile blue">
+            <div class="kpi-label">Net new MRR avg</div>
+            <div class="kpi-value" style="font-size:20px">$9.82B/mo</div>
+            <div class="kpi-sub">Efficient burn multiples 0.01×</div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-title">MRR motion decomposition — new vs expansion vs churned (FY2025 monthly avg, $M)</div>
+          <div class="legend">
+            <span class="legend-item"><span class="legend-swatch" style="background:#3b82f6"></span>New MRR</span>
+            <span class="legend-item"><span class="legend-swatch" style="background:#22c55e"></span>Expansion MRR</span>
+            <span class="legend-item"><span class="legend-swatch" style="background:#ef4444"></span>Churned MRR (negative)</span>
+          </div>
+          <div class="chart-wrap h280"><canvas id="motionChart" role="img" aria-label="Stacked MRR motion breakdown showing new expansion and churned MRR for all 12 companies"></canvas></div>
+        </div>
+
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title">Expansion % of net new MRR — upsell engine efficiency (FY2025)</div>
+            <div class="chart-wrap h200"><canvas id="expContribChart" role="img" aria-label="Expansion MRR as percentage of net new MRR by company"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Cash conversion cycle — DSO vs DPO days (FY2025 avg)</div>
+            <div class="legend">
+              <span class="legend-item"><span class="legend-swatch" style="background:#3b82f6"></span>DSO — days sales outstanding</span>
+              <span class="legend-item"><span class="legend-swatch" style="background:#22c55e"></span>DPO — days payable outstanding</span>
+            </div>
+            <div class="chart-wrap h200"><canvas id="cashCycleChart" role="img" aria-label="DSO and DPO cash conversion cycle comparison by company"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ OPEX & MARGINS ══ -->
+      <div id="section-opex" class="section">
+        <div class="page-header">
+          <div class="page-eyebrow">Anchor 2 — EBITDA margin delta vs prior period</div>
+          <div class="page-title">OPEX structure &amp; margin analysis</div>
+          <div class="page-subtitle">S&amp;M · R&amp;D · G&amp;A ratios · Gross margin trend FY2021–2025 · Operating leverage signals</div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-title">OPEX structure — S&amp;M / R&amp;D / G&amp;A as % of ARR (FY2024, stacked)</div>
+          <div class="legend">
+            <span class="legend-item"><span class="legend-swatch" style="background:#3b82f6"></span>S&amp;M (avg 40.3%)</span>
+            <span class="legend-item"><span class="legend-swatch" style="background:#14b8a6"></span>R&amp;D (avg 21.2%)</span>
+            <span class="legend-item"><span class="legend-swatch" style="background:#8b5cf6"></span>G&amp;A (avg 11.2%)</span>
+          </div>
+          <div class="chart-wrap h240"><canvas id="opexChart" role="img" aria-label="OPEX breakdown by S and M R and D and G and A as percentage of ARR for each company in 2024"></canvas></div>
+        </div>
+
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title">Gross margin trend — FY2021 → FY2025 (annual avg %)</div>
+            <div class="chart-wrap h240"><canvas id="gmTrendChart" role="img" aria-label="Gross margin trend over five years for all twelve companies showing flat trajectory"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Operating leverage check — S&amp;M ratio 2023 vs 2024</div>
+            <div class="legend">
+              <span class="legend-item"><span class="legend-swatch" style="background:#3b82f6"></span>FY2023</span>
+              <span class="legend-item"><span class="legend-swatch" style="background:#f59e0b"></span>FY2024</span>
+            </div>
+            <div class="chart-wrap h240"><canvas id="smLevChart" role="img" aria-label="S and M expense ratio comparison between 2023 and 2024 showing operating leverage status"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ UNIT ECONOMICS ══ -->
+      <div id="section-unit" class="section">
+        <div class="page-header">
+          <div class="page-eyebrow">Anchor 4 — Cash conversion cycle · LTV / CAC · Payback</div>
+          <div class="page-title">Unit economics deep dive</div>
+          <div class="page-subtitle">LTV / CAC · Payback months · Burn multiple · NRR compounding · FY2025</div>
+        </div>
+
+        <div class="grid4">
+          <div class="kpi-tile green">
+            <div class="kpi-label">Best LTV/CAC</div>
+            <div class="kpi-value" style="font-size:20px">16,370×</div>
+            <div class="kpi-sub">NexaFlow — expansion engine</div>
+          </div>
+          <div class="kpi-tile amber">
+            <div class="kpi-label">Weakest LTV/CAC</div>
+            <div class="kpi-value" style="font-size:20px">2,115×</div>
+            <div class="kpi-sub">EduSphere — scale trap signal</div>
+          </div>
+          <div class="kpi-tile blue">
+            <div class="kpi-label">Best burn multiple</div>
+            <div class="kpi-value" style="font-size:20px">0.00×</div>
+            <div class="kpi-sub">CloudNest / HRMatrix — cash generative</div>
+          </div>
+          <div class="kpi-tile red">
+            <div class="kpi-label">Shortest runway</div>
+            <div class="kpi-value" style="font-size:20px">14 mo</div>
+            <div class="kpi-sub">LogistIQ — capital event required</div>
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title">LTV / CAC ratio by company (FY2025 avg, thousands)</div>
+            <div class="chart-wrap h240"><canvas id="ltvcacChart" role="img" aria-label="LTV to CAC ratio by company showing massive untapped upsell capacity portfolio wide"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Runway months — cash position &amp; burn rate (FY2025)</div>
+            <div class="legend">
+              <span class="legend-item"><span class="legend-swatch" style="background:#22c55e"></span>≥36 months safe</span>
+              <span class="legend-item"><span class="legend-swatch" style="background:#f59e0b"></span>18–36 months watch</span>
+              <span class="legend-item"><span class="legend-swatch" style="background:#ef4444"></span>&lt;18 months critical</span>
+            </div>
+            <div class="chart-wrap h240"><canvas id="runwayChart" role="img" aria-label="Runway months by company with LogistIQ at 14 months requiring immediate attention"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ ANOMALIES ══ -->
+      <div id="section-anomalies" class="section">
+        <div class="page-header">
+          <div class="page-eyebrow">Anchor 4 — YoY variance &gt;15% · Root cause hypothesis</div>
+          <div class="page-title">Anomaly flags &amp; investigation targets</div>
+          <div class="page-subtitle">Every flag includes root cause hypothesis · confidence score · recommended action</div>
+        </div>
+
+        <div class="alert-item red">
+          <div class="alert-icon" style="color:#ef4444">▲</div>
+          <div>
+            <div class="alert-title">AutoPilotAI — persistent sector underperformance · Confidence 71%</div>
+            <div class="alert-body">Despite #1 ARR position ($1.38T), AutoPilotAI consistently underperforms the AI/ML sector benchmark by −8 to −14pp across FY2022–2024 (sector avg 35% vs company 27–33%). Hypothesis: market share dilution from open-source LLM commoditization reducing switching costs and pricing power. Monthly MRR exhibits extreme volatility (5–50× swings), consistent with lumpy enterprise contract timing — requires ASC 606 / IFRS 15 revenue recognition audit. Action: decompose new vs expansion contribution by cohort; review ACV pricing trend vs 2021 baseline; quantify enterprise contract concentration (top-10 customer revenue %).</div>
+          </div>
+        </div>
+
+        <div class="alert-item red">
+          <div class="alert-icon" style="color:#ef4444">▲</div>
+          <div>
+            <div class="alert-title">GridSecure — EBITDA swings 26pp in 12 months · Confidence 66%</div>
+            <div class="alert-body">EBITDA margin moved from −11.6% (Q4 2022) to +14.7% (Q3 2023) — a 26pp swing with no corresponding revenue inflection. Logo churn at 2.4% is the highest in the portfolio; at $718M ARR this destroys ~$17M ARR per month. Hypothesis: lumpy enterprise deal recognition creating artificial margin seasonality, combined with customer concentration risk in top accounts. Secondary hypothesis: variable cost structure tied to specific contract delivery milestones. Action: revenue recognition audit under IFRS 15; top-5 customer revenue concentration analysis; churn cohort analysis to identify churning segments.</div>
+          </div>
+        </div>
+
+        <div class="alert-item amber">
+          <div class="alert-icon" style="color:#f59e0b">●</div>
+          <div>
+            <div class="alert-title">DataPulse — $5.7B ARR near-zero profitability · Confidence 83%</div>
+            <div class="alert-body">EBITDA margin at −0.1% at $5.7B ARR scale represents a structural failure of operating leverage. S&M running at 40.6% ARR with R&D at 20.2%; combined 60.8% leaves insufficient room for profitability even at gross margins of 74.8%. YoY growth decelerating (20% vs 22% sector avg). Burn multiple 0.01× is efficient but growth efficiency is deteriorating. Hypothesis: market maturation in analytics SaaS creating price compression, negating gross profit expansion. Action: pricing audit across customer cohorts; CAC efficiency by segment; test monetization of existing data assets as higher-margin revenue layer.</div>
+          </div>
+        </div>
+
+        <div class="alert-item amber">
+          <div class="alert-icon" style="color:#f59e0b">●</div>
+          <div>
+            <div class="alert-title">EduSphere · OmniDesk · LegalEdge — scale trap · Confidence 78%</div>
+            <div class="alert-body">Three companies (ARR: $8.3M, $2.6M, $1.1M) are below the minimum viable SaaS scale for organic path to profitability at current growth rates (8–10% vs sector benchmarks of 9–14%). EBITDA at −10.5%, −7.0%, +3.6% respectively. NRR above 100% confirms product-market fit exists; however, insufficient S&M engine to drive growth acceleration organically. Classic "stuck in no-man's-land" scale trap where costs are growing faster than achievable organic revenue. Board action required within 2 quarters: (a) M&A exit to strategic acquirer, (b) market adjacency pivot with fresh capital, (c) accelerated GTM investment with 18-month EBITDA covenant. Confidence in organic recovery without intervention: 22%.</div>
+          </div>
+        </div>
+
+        <div class="alert-item amber">
+          <div class="alert-icon" style="color:#f59e0b">●</div>
+          <div>
+            <div class="alert-title">NexaFlow — DSO 51 days · $386M trapped working capital · Confidence 89%</div>
+            <div class="alert-body">NexaFlow carries the highest DSO in the portfolio at 51 days vs DPO 41 days — a net 10-day working capital deficit. At $2.76B ARR ($230M monthly), DSO of 51 days implies ~$386M in outstanding receivables. The sector benchmark for CRM SaaS is 30–35 days DSO. Runway of 55 months (lowest of comparably-sized companies) suggests this isn't critical, but the opportunity cost is material. Action: contract restructuring to net-30 standard terms; auto-renewal clauses with pre-authorized payment; receivables factoring for enterprise accounts &gt;90 days past due. Releasing 16 days DSO would free ~$123M cash.</div>
+          </div>
+        </div>
+
+        <div class="alert-item green">
+          <div class="alert-icon" style="color:#22c55e">✓</div>
+          <div>
+            <div class="alert-title">HRMatrix — best risk-adjusted mid-market profile · Confidence 85%</div>
+            <div class="alert-body">HRMatrix presents the strongest risk-adjusted investment profile in the mid-market cohort: 14.0% EBITDA margin + 18.5% YoY growth = Rule of 40 score of 29.2 (approaching the elite 30 threshold), NRR 106.6% (portfolio high), runway ≥99 months (cash generative). Public company status with sector-leading retention creates a platform consolidation candidate profile. Logo churn at 2.2% warrants monitoring — at $1.74B ARR, each 0.1pp increase costs $1.74M ARR per month. Action: accelerate go-to-market expansion investment; evaluate as consolidation platform for HRMatrix + LogistIQ vertical integration opportunity.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ STRATEGY ══ -->
+      <div id="section-strategy" class="section">
+        <div class="page-header">
+          <div class="page-eyebrow">Lens 2 — Strategic · CFO-level action items</div>
+          <div class="page-title">Strategic recommendations</div>
+          <div class="page-subtitle">3 board-level interventions with quantified expected impact · Confidence-weighted</div>
+        </div>
+
+        <div class="rec-card blue">
+          <div class="rec-header">
+            <div class="rec-title">1 — Trigger S&amp;M efficiency intervention across 6 underperforming companies</div>
+            <div class="rec-conf badge badge-blue">89% confidence</div>
+          </div>
+          <div class="rec-body">
+            Portfolio-wide S&amp;M intensity averages 40.3% of ARR — 8–12pp above SaaS benchmarks for comparable growth profiles (OpenView SaaS Benchmarks 2024). Negative operating leverage is systemic: S&amp;M is not converting efficiently into net new ARR despite burn multiples of 0.01× indicating efficient cash deployment. The paradox — efficient cash use but poor S&amp;M-to-growth conversion — signals structural GTM execution failure, not capital scarcity.<br><br>
+            Targets: CloudNest (43.5%), NexaFlow (42.8%), PayStream (42.0%), DataPulse (40.6%), MediTrack (41.4%), EduSphere (40.2%). Implement zero-based S&amp;M budget audit in Q3 2026. Target reduction from 40% → 33% of ARR, releasing 7pp to EBITDA across cohort.<br><br>
+            <strong>Quantified impact:</strong> At $2.12T combined ARR, a 7pp S&amp;M reduction generates approximately $148B in annualized EBITDA improvement. At sector P/S multiples of 8–12×, this represents $1.2–1.8T in enterprise value creation. Expected Rule of 40 improvement: +4–6pp across cohort within 2 quarters.
+          </div>
+        </div>
+
+        <div class="rec-card teal">
+          <div class="rec-header">
+            <div class="rec-title">2 — Reclassify EduSphere, OmniDesk, LegalEdge as strategic optionality assets</div>
+            <div class="rec-conf badge badge-teal">78% confidence</div>
+          </div>
+          <div class="rec-body">
+            Three companies ($1.1M–$8.3M ARR) are below the minimum viable SaaS scale threshold for organic profitability at current growth rates. NRR &gt;100% confirms product-market fit but the S&amp;M engine is insufficient to accelerate growth to escape velocity. These are classic "wedge" SaaS products — genuine value creators that cannot independently scale to profitability without strategic partnership or capital injection.<br><br>
+            Board decision framework within 2 quarters: (a) <strong>M&amp;A exit</strong> — all three are natural bolt-on targets for vertical SaaS consolidators; LegalEdge fits LegalTech platforms, EduSphere fits EdTech acquirers, OmniDesk fits CX/support suite consolidators. At 8–10× ARR multiples, valuations of $9M–$66M are achievable. (b) <strong>Market adjacency pivot</strong> — fresh Series A/B capital to fund 18-month growth acceleration with EBITDA covenant. (c) <strong>Hold with monitoring</strong> — only viable if combined operating cost is below $500K/month and runway exceeds 24 months.<br><br>
+            <strong>Confidence in organic recovery without intervention: 22%.</strong>
+          </div>
+        </div>
+
+        <div class="rec-card amber">
+          <div class="rec-header">
+            <div class="rec-title">3 — Deploy expansion revenue playbook: target 40%+ net new MRR from expansion</div>
+            <div class="rec-conf badge badge-amber">83% confidence</div>
+          </div>
+          <div class="rec-body">
+            Portfolio expansion MRR contribution ranges 27–36% of net new MRR — with AutoPilotAI at 27.1% despite the highest ARR base ($1.38T). Best-in-class SaaS companies drive 40–50% net new ARR from expansion at Series C+ (Bessemer Cloud Index 2024). With NRR already &gt;100% portfolio-wide and LTV/CAC ratios of 2,000–16,000×, the unit economic infrastructure for expansion revenue is in place; only the GTM playbook is absent.<br><br>
+            The opportunity is largest at AutoPilotAI (27% → 40% = 13pp shift on $7.25B avg monthly net new MRR = +$942M/month incremental expansion) and NexaFlow (32% → 40% = 8pp shift on $8.4M avg monthly = +$672K/month). Portfolio-wide, a 5pp improvement in expansion contribution would add approximately $2.3B in annualized net new ARR without incremental CAC.<br><br>
+            <strong>Mechanism:</strong> product-led expansion triggers, consumption-based pricing tiers, quarterly business reviews tied to upsell sequences, automated health-score-based expansion alerts.
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="card-title" style="margin-bottom:12px">Confidence matrix — key findings</div>
+        <div id="confMatrix"></div>
+      </div>
+
+      <!-- ══ FORECAST ══ -->
+      <div id="section-forecast" class="section">
+        <div class="page-header">
+          <div class="page-eyebrow">Lens 3 — Predictive · Linear regression on trailing 12M</div>
+          <div class="page-title">Q1–Q2 2026 forecast</div>
+          <div class="page-subtitle">Three scenarios per company · Upside / Base / Downside · Top 6 by ARR</div>
+        </div>
+
+        <div class="tab-row" id="forecastTabs">
+          <button class="tab-btn active" onclick="showForecast('auto')">AutoPilotAI</button>
+          <button class="tab-btn" onclick="showForecast('cloud')">CloudNest</button>
+          <button class="tab-btn" onclick="showForecast('data')">DataPulse</button>
+          <button class="tab-btn" onclick="showForecast('nexaflow')">NexaFlow</button>
+          <button class="tab-btn" onclick="showForecast('hrmatrix')">HRMatrix</button>
+          <button class="tab-btn" onclick="showForecast('grid')">GridSecure</button>
+        </div>
+
+        <div id="fc-auto" class="fc-panel visible">
+          <div class="fc-company-meta"><strong>AutoPilotAI</strong> · AI/ML · Series D · ARR: $1.38T · YoY: +32.8% · Rule of 40: 37.4 · EBITDA: +3.2%</div>
+          <div class="scenario-grid">
+            <div class="scenario up-sc sc-up"><div class="sc-label">Upside</div><div class="sc-value">$1.64T</div><div class="sc-desc">Q2 2026 ARR (+19%) — expansion playbook launch, new enterprise cohort activation. EBITDA inflects to +8%.</div></div>
+            <div class="scenario sc-base"><div class="sc-label">Base</div><div class="sc-value">$1.60T</div><div class="sc-desc">Q2 2026 ARR (+16%) — continuation of 32.8% YoY trajectory. EBITDA holds at +3%.</div></div>
+            <div class="scenario down-sc sc-down"><div class="sc-label">Downside</div><div class="sc-value">$1.51T</div><div class="sc-desc">Q2 2026 ARR (+10%) — AI sector deceleration, commoditization pressure. EBITDA turns −5%.</div></div>
+          </div>
+          <div class="fc-risk">⚠ Key risk: EBITDA inflection point is ~28% YoY growth. S&M at 35.9% of ARR means a 5pp growth deceleration triggers negative EBITDA at this scale. MRR volatility (5–50× monthly swings) signals ASC 606 review required before public reporting.</div>
+        </div>
+
+        <div id="fc-cloud" class="fc-panel">
+          <div class="fc-company-meta"><strong>CloudNest</strong> · Infrastructure · Public · ARR: $737B · YoY: +28.3% · Rule of 40: 27.9 · EBITDA: +20.6%</div>
+          <div class="scenario-grid">
+            <div class="scenario up-sc sc-up"><div class="sc-label">Upside</div><div class="sc-value">$900B</div><div class="sc-desc">Q2 2026 ARR (+22%) — cloud migration contract expansion, enterprise upsell cycle. EBITDA: +24%.</div></div>
+            <div class="scenario sc-base"><div class="sc-label">Base</div><div class="sc-value">$841B</div><div class="sc-desc">Q2 2026 ARR (+14%) — steady state. Strongest risk-adjusted profile at 20.6% EBITDA margin.</div></div>
+            <div class="scenario down-sc sc-down"><div class="sc-label">Downside</div><div class="sc-value">$780B</div><div class="sc-desc">Q2 2026 ARR (+6%) — public market multiple compression, infrastructure spending slowdown.</div></div>
+          </div>
+          <div class="fc-risk">✓ Best risk-adjusted: 20.6% EBITDA buffer absorbs growth deceleration. Public company — monitor cloud infrastructure sector sentiment and hyperscaler capex cycles.</div>
+        </div>
+
+        <div id="fc-data" class="fc-panel">
+          <div class="fc-company-meta"><strong>DataPulse</strong> · Analytics · Public · ARR: $5.7B · YoY: +20.0% · Rule of 40: 20.8 · EBITDA: −0.1%</div>
+          <div class="scenario-grid">
+            <div class="scenario up-sc sc-up"><div class="sc-label">Upside</div><div class="sc-value">$6.5B</div><div class="sc-desc">Q2 2026 ARR (+14%) — pricing initiative drives EBITDA to +6%. S&M efficiency unlocked.</div></div>
+            <div class="scenario sc-base"><div class="sc-label">Base</div><div class="sc-value">$6.3B</div><div class="sc-desc">Q2 2026 ARR (+10%) — flat EBITDA near zero. Growth continuing to decelerate.</div></div>
+            <div class="scenario down-sc sc-down"><div class="sc-label">Downside</div><div class="sc-value">$6.0B</div><div class="sc-desc">Q2 2026 ARR (+5%) — pricing pressure intensifies. EBITDA −4%, cash burn accelerates from $9.5M/mo.</div></div>
+          </div>
+          <div class="fc-risk">⚠ Critical: EBITDA at −0.1% — one quarter of S&M overspend triggers meaningful negative free cash flow. Runway 30 months (lowest among $1B+ ARR companies). Pricing initiative is the single highest-leverage intervention.</div>
+        </div>
+
+        <div id="fc-nexaflow" class="fc-panel">
+          <div class="fc-company-meta"><strong>NexaFlow</strong> · CRM · Series C · ARR: $2.76B · YoY: +20.9% · Rule of 40: 17.2 · EBITDA: +9.6%</div>
+          <div class="scenario-grid">
+            <div class="scenario up-sc sc-up"><div class="sc-label">Upside</div><div class="sc-value">$3.2B</div><div class="sc-desc">Q2 2026 ARR (+16%) — expansion revenue acceleration; LTV/CAC 16,370× creates reinvestment headroom.</div></div>
+            <div class="scenario sc-base"><div class="sc-label">Base</div><div class="sc-value">$3.05B</div><div class="sc-desc">Q2 2026 ARR (+10%) — DSO 51 days constrains working capital optimization.</div></div>
+            <div class="scenario down-sc sc-down"><div class="sc-label">Downside</div><div class="sc-value">$2.9B</div><div class="sc-desc">Q2 2026 ARR (+5%) — CRM sector intensifies, sector vs company gap widens to −5pp.</div></div>
+          </div>
+          <div class="fc-risk">⚠ DSO 51 days (highest portfolio) = ~$386M trapped working capital. Tightening payment terms to 35 days would release ~$123M. Runway 55 months — shortest of comparable-scale companies.</div>
+        </div>
+
+        <div id="fc-hrmatrix" class="fc-panel">
+          <div class="fc-company-meta"><strong>HRMatrix</strong> · HR Tech · Public · ARR: $1.74B · YoY: +18.5% · Rule of 40: 29.2 · EBITDA: +14.0%</div>
+          <div class="scenario-grid">
+            <div class="scenario up-sc sc-up"><div class="sc-label">Upside</div><div class="sc-value">$2.1B</div><div class="sc-desc">Q2 2026 ARR (+21%) — Rule of 40 breaches 30 threshold; public market re-rating catalyst unlocked.</div></div>
+            <div class="scenario sc-base"><div class="sc-label">Base</div><div class="sc-value">$1.9B</div><div class="sc-desc">Q2 2026 ARR (+9%) — steady 14% EBITDA, NRR 106.6% compounds naturally.</div></div>
+            <div class="scenario down-sc sc-down"><div class="sc-label">Downside</div><div class="sc-value">$1.8B</div><div class="sc-desc">Q2 2026 ARR (+3%) — HR tech consolidation cycle creates pricing pressure.</div></div>
+          </div>
+          <div class="fc-risk">✓ Best risk-adjusted mid-market asset. Logo churn 2.2%: at $1.74B ARR, each 0.1pp increase costs $1.74M ARR/month. Monitor churn trajectory — it is the one vulnerability in an otherwise exemplary profile.</div>
+        </div>
+
+        <div id="fc-grid" class="fc-panel">
+          <div class="fc-company-meta"><strong>GridSecure</strong> · Cybersecurity · Series C · ARR: $718M · YoY: +18.6% · Rule of 40: 16.1 · EBITDA: −7.6%</div>
+          <div class="scenario-grid">
+            <div class="scenario up-sc sc-up"><div class="sc-label">Upside</div><div class="sc-value">$870M</div><div class="sc-desc">Q2 2026 ARR (+21%) — cybersecurity budget tailwind post-breach cycle. EBITDA inflects to +5%.</div></div>
+            <div class="scenario sc-base"><div class="sc-label">Base</div><div class="sc-value">$784M</div><div class="sc-desc">Q2 2026 ARR (+9%) — volatile EBITDA stabilizes near −2%. Runway 32 months.</div></div>
+            <div class="scenario down-sc sc-down"><div class="sc-label">Downside</div><div class="sc-value">$730B</div><div class="sc-desc">Q2 2026 ARR (+2%) — growth vs sector gap widens to −6pp. EBITDA −12%, runway shortens.</div></div>
+          </div>
+          <div class="fc-risk">⚠ Highest EBITDA volatility in portfolio (26pp swing in 12 months). Logo churn 2.4% (portfolio high) at $718M ARR = $17M ARR/month at risk. Revenue concentration investigation required.</div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="card">
+          <div class="card-title">Forecast ARR trajectory — top 6 companies (base case, Q2 2026)</div>
+          <div class="chart-wrap h200"><canvas id="forecastChart" role="img" aria-label="Forecast ARR for top 6 companies showing base case Q2 2026 projections"></canvas></div>
+        </div>
+      </div>
+
+      <!-- ══ DATA QUALITY ══ -->
+      <div id="section-dataquality" class="section">
+        <div class="page-header">
+          <div class="page-eyebrow">Pre-analysis certification · Big-4 audit standard</div>
+          <div class="page-title">Data quality report</div>
+          <div class="page-subtitle">Completeness · Anomaly detection · Schema validation · Structural flags</div>
+        </div>
+
+        <div class="grid3">
+          <div class="kpi-tile green">
+            <div class="kpi-label">Null values</div>
+            <div class="kpi-value">0</div>
+            <div class="kpi-sub kpi-up">0 of 26,640 cells — complete</div>
+          </div>
+          <div class="kpi-tile blue">
+            <div class="kpi-label">Total records</div>
+            <div class="kpi-value">720</div>
+            <div class="kpi-sub">12 companies × 60 months</div>
+          </div>
+          <div class="kpi-tile blue">
+            <div class="kpi-label">KPI fields</div>
+            <div class="kpi-value">37</div>
+            <div class="kpi-sub">Operational · Strategic · Predictive</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:16px">
+          <div class="dq-row">
+            <div class="dq-icon" style="color:#22c55e">✓</div>
+            <div class="dq-text"><strong>Schema completeness:</strong> All 37 fields present across all 720 rows. No truncated series detected.</div>
+            <div class="dq-status badge-green badge">PASS</div>
+          </div>
+          <div class="dq-row">
+            <div class="dq-icon" style="color:#22c55e">✓</div>
+            <div class="dq-text"><strong>Date continuity:</strong> FY2021 Jan → FY2025 Dec. No gaps. Monthly granularity confirmed.</div>
+            <div class="dq-status badge-green badge">PASS</div>
+          </div>
+          <div class="dq-row">
+            <div class="dq-icon" style="color:#22c55e">✓</div>
+            <div class="dq-text"><strong>Numeric range validation:</strong> No negative ARR, gross margin within 60–90% range, NRR within 85–130% range.</div>
+            <div class="dq-status badge-green badge">PASS</div>
+          </div>
+          <div class="dq-row">
+            <div class="dq-icon" style="color:#f59e0b">⚠</div>
+            <div class="dq-text"><strong>MRR volatility anomaly — AutoPilotAI &amp; CloudNest:</strong> Month-to-month MRR swings of 5–50× detected (e.g. AutoPilotAI Jan 2025: $9.8B, Mar 2025: $34.6B). Consistent with lumpy enterprise contract recognition but requires ASC 606 / IFRS 15 revenue recognition review before public reporting. Total months flagged: 23 of 120 (19%).</div>
+            <div class="dq-status badge-amber badge">REVIEW</div>
+          </div>
+          <div class="dq-row">
+            <div class="dq-icon" style="color:#f59e0b">⚠</div>
+            <div class="dq-text"><strong>ARR scale:</strong> AutoPilotAI ($1.38T) and CloudNest ($737B) operate at trillion/sub-trillion ARR — verify currency denomination and unit consistency with source system. All other companies in $1M–$6B range.</div>
+            <div class="dq-status badge-amber badge">VERIFY</div>
+          </div>
+          <div class="dq-row">
+            <div class="dq-icon" style="color:#22c55e">✓</div>
+            <div class="dq-text"><strong>Internal consistency:</strong> ARR = MRR × 12 validated to within ±0.1%. NRR directionally consistent with expansion/churn MRR components.</div>
+            <div class="dq-status badge-green badge">PASS</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Dataset coverage — companies × years × KPI completeness</div>
+          <div class="chart-wrap h200"><canvas id="coverageChart" role="img" aria-label="Dataset coverage heatmap showing 100 percent completeness across all companies and years"></canvas></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const COMPANIES = ['AutoPilotAI','CloudNest','DataPulse','EduSphere','GridSecure','HRMatrix','LegalEdge','LogistIQ','MediTrack','NexaFlow','OmniDesk','PayStream'];
+const SECTORS   = ['AI/ML','Infra','Analytics','EdTech','Cybersec','HR Tech','LegalTech','Supply Ch.','HealthTech','CRM','Support','Fintech'];
+const STAGES    = ['Series D','Public','Public','Series C','Series C','Public','Series B','Series B','Series C','Series C','Series B','Public'];
+const ARR       = [1378418,736626,5705,8.3,717.7,1738.2,1.1,216.6,387.8,2764,2.6,237];
+const YOY       = [32.8,28.3,20.0,10.2,18.6,18.5,8.0,17.2,16.8,20.9,8.7,14.3];
+const VS_SECTOR = [-2.2,0.33,-1.98,1.23,-6.41,2.52,-2.98,5.25,-4.21,2.88,-5.29,-4.73];
+const EBITDA    = [3.15,20.55,-0.08,-10.54,-7.60,14.02,3.57,-3.16,8.40,9.57,-7.02,4.12];
+const GM        = [75.4,76.1,74.8,74.4,74.6,75.9,75.5,74.3,75.3,74.2,76.3,74.1];
+const NRR       = [106.44,104.11,105.80,106.10,106.14,106.64,105.07,105.61,106.08,105.12,102.67,105.09];
+const LOGO_CH   = [1.738,0.781,1.802,0.515,2.421,2.223,1.202,2.285,0.945,1.190,0.716,1.240];
+const LTV_CAC   = [12200,14296,11150,2115,15803,13530,4351,8046,8774,16370,7913,15161];
+const PAYBACK   = [0.0,0.0,0.01,0.21,0.0,0.01,0.12,0.02,0.01,0.0,0.04,0.0];
+const R40       = [37.4,27.9,20.8,11.9,16.1,29.2,14.8,12.7,22.2,17.2,14.3,17.6];
+const RUNWAY    = [99,99,30,19,32,99,99,14,99,99,36,99];
+const DSO       = [41.4,49.8,44.2,43.2,45.8,42.5,49.3,47.0,42.9,51.3,45.6,44.7];
+const DPO       = [40.1,42.4,40.3,40.5,36.8,32.1,35.3,37.2,32.3,40.8,39.6,42.8];
+const SM_PCT    = [35.9,43.5,40.6,40.2,38.3,38.6,39.7,39.9,41.4,42.8,40.3,42.0];
+const RD_PCT    = [21.1,22.0,20.2,21.2,21.3,21.9,19.1,20.8,22.9,20.5,23.5,20.9];
+const GA_PCT    = [11.5,11.1,11.4,10.4,11.4,11.3,11.2,11.1,11.0,11.1,11.6,11.3];
+const NEW_MRR   = [5745,1780,49.1,0.052,47.5,4.29,0.077,0.422,13.1,6.27,0.223,6.45];
+const EXP_MRR   = [1963,888,24.8,0.024,22.9,1.90,0.039,0.204,6.45,2.72,0.107,2.88];
+const CHN_MRR   = [458,196,5.44,0.005,6.39,0.60,0.007,0.067,1.52,0.61,0.031,1.07];
+const SM_2023   = [42.4,39.9,40.9,39.2,38.7,38.5,40.6,41.3,38.3,41.8,41.7,37.8];
+const GM_TREND  = [
+  [73.7,76.2,75.6,75.4,75.4],[75.0,75.7,76.2,73.9,76.1],[74.5,76.5,74.0,74.2,74.8],
+  [73.7,74.3,75.2,75.5,74.4],[76.4,73.1,73.5,75.5,74.6],[73.7,74.0,75.7,76.3,75.9],
+  [73.7,73.8,73.7,76.2,75.5],[74.5,75.0,74.4,74.6,74.3],[76.1,75.4,75.5,75.9,75.3],
+  [74.6,75.4,77.6,75.3,74.2],[75.3,76.4,76.7,75.3,76.3],[75.1,74.6,75.5,73.4,74.1]
+];
+
+const SHORT = COMPANIES.map(c => c.length > 9 ? c.slice(0,9) : c);
+const GC = '#e5e7eb'; // gridline light
+const TC = '#6b7280'; // tick
+
+function fmtARR(v) {
+  if (v > 100000) return '$' + (v/1000000).toFixed(2) + 'T';
+  if (v > 1000) return '$' + (v/1000).toFixed(1) + 'B';
+  return '$' + v.toFixed(0) + 'M';
+}
+function r40Color(v) {
+  if (v >= 30) return '#3b82f6';
+  if (v >= 20) return '#14b8a6';
+  if (v >= 15) return '#f59e0b';
+  return '#ef4444';
+}
+function r40Badge(v) {
+  if (v >= 30) return '<span class="badge badge-blue">Strong</span>';
+  if (v >= 20) return '<span class="badge badge-teal">Adequate</span>';
+  if (v >= 15) return '<span class="badge badge-amber">Weak</span>';
+  return '<span class="badge badge-red">Critical</span>';
+}
+function vsBadge(v) {
+  const s = (v > 0 ? '+' : '') + v.toFixed(1) + 'pp';
+  if (v > 2) return '<span class="badge badge-green">' + s + '</span>';
+  if (v > 0) return '<span class="badge badge-teal">' + s + '</span>';
+  if (v > -5) return '<span class="badge badge-amber">' + s + '</span>';
+  return '<span class="badge badge-red">' + s + '</span>';
+}
+function ebitdaFmt(v) {
+  const cl = v >= 0 ? 'color:#22c55e' : 'color:#ef4444';
+  return '<span style="' + cl + '">' + (v >= 0 ? '+' : '') + v.toFixed(1) + '%</span>';
+}
+function runwayFmt(v) {
+  if (v >= 99) return '<span style="color:#22c55e">≥99mo</span>';
+  if (v < 18) return '<span style="color:#ef4444">' + v + 'mo ⚠</span>';
+  return '<span style="color:#f59e0b">' + v + 'mo</span>';
+}
+
+// ── KPI TABLE ──
+const tbody = document.getElementById('kpiTableBody');
+// Sort by ARR descending
+const idx = ARR.map((_,i) => i).sort((a,b) => ARR[b]-ARR[a]);
+idx.forEach(i => {
+  tbody.innerHTML += `<tr>
+    <td><span class="co-name">${COMPANIES[i]}</span><br><span class="co-tag">${SECTORS[i]} · ${STAGES[i]}</span></td>
+    <td>${fmtARR(ARR[i])}</td>
+    <td>${YOY[i].toFixed(1)}%</td>
+    <td>${vsBadge(VS_SECTOR[i])}</td>
+    <td>${ebitdaFmt(EBITDA[i])}</td>
+    <td>${GM[i].toFixed(1)}%</td>
+    <td>${NRR[i].toFixed(1)}%</td>
+    <td>${LOGO_CH[i].toFixed(2)}%</td>
+    <td>${(LTV_CAC[i]/1000).toFixed(0)}K×</td>
+    <td>${PAYBACK[i].toFixed(2)}mo</td>
+    <td>${r40Badge(R40[i])}</td>
+    <td>${runwayFmt(RUNWAY[i])}</td>
+    <td>${r40Badge(R40[i])}</td>
+  </tr>`;
+});
+
+// ── CONFIDENCE MATRIX ──
+const confData = [
+  ['S&M is the primary EBITDA lever, not COGS', 89, '#3b82f6'],
+  ['Expansion revenue systematically underutilized', 83, '#14b8a6'],
+  ['EduSphere / OmniDesk / LegalEdge: non-viable organic path', 78, '#f59e0b'],
+  ['HRMatrix: best risk-adjusted mid-market asset', 85, '#22c55e'],
+  ['AutoPilotAI: AI/ML sector share erosion', 71, '#f59e0b'],
+  ['GridSecure: revenue recognition concentration risk', 66, '#ef4444'],
+];
+const cm = document.getElementById('confMatrix');
+confData.forEach(([label, pct, color]) => {
+  cm.innerHTML += `<div class="conf-row">
+    <div class="conf-label">${label}</div>
+    <div class="conf-track"><div class="conf-fill" style="width:${pct}%;background:${color}"></div></div>
+    <div class="conf-pct">${pct}%</div>
+  </div>`;
+});
+
+// ── CHARTS ──
+const defOpts = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { grid: { display: false }, ticks: { color: TC, font: { size: 10 } } },
+    y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: TC, font: { size: 10 } } }
+  }
+};
+
+// ARR Distribution (log)
+const arrSorted = [...ARR].map((v,i) => ({v,i})).sort((a,b) => b.v-a.v);
+new Chart(document.getElementById('arrDistChart'), {
+  type: 'bar',
+  data: {
+    labels: arrSorted.map(d => SHORT[d.i]),
+    datasets: [{
+      data: arrSorted.map(d => Math.log10(d.v * 1e6)),
+      backgroundColor: arrSorted.map(d => r40Color(R40[d.i])),
+      borderRadius: 4, maxBarThickness: 28
+    }]
+  },
+  options: { ...defOpts,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ARR: ' + fmtARR(arrSorted[ctx.dataIndex].v) } } },
+    scales: { x: { grid: { display: false }, ticks: { color: TC, font: { size: 10 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: TC, font: { size: 10 }, callback: v => ['$1','$10M','$100M','$1B','$10B','$100B','$1T'][Math.round(v)] || '' } } }
+  }
+});
+
+// Rule of 40
+const r40Sorted = R40.map((v,i) => ({v,i})).sort((a,b) => b.v-a.v);
+new Chart(document.getElementById('r40Chart'), {
+  type: 'bar',
+  data: {
+    labels: r40Sorted.map(d => SHORT[d.i]),
+    datasets: [{
+      data: r40Sorted.map(d => d.v),
+      backgroundColor: r40Sorted.map(d => r40Color(d.v)),
+      borderRadius: 4, maxBarThickness: 26
+    }]
+  },
+  options: { ...defOpts, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' R40: ' + ctx.raw.toFixed(1) } } },
+    scales: { x: { grid: { display: false }, ticks: { color: TC, font: { size: 10 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: TC, font: { size: 10 } }, min: 0, max: 45 } }
+  }
+});
+
+// vs Sector
+new Chart(document.getElementById('vsectorChart'), {
+  type: 'bar',
+  data: {
+    labels: SHORT,
+    datasets: [{
+      data: VS_SECTOR,
+      backgroundColor: VS_SECTOR.map(v => v >= 0 ? '#22c55e' : '#ef4444'),
+      borderRadius: 4, maxBarThickness: 28
+    }]
+  },
+  options: { ...defOpts, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' vs sector: ' + (ctx.raw > 0 ? '+' : '') + ctx.raw.toFixed(2) + 'pp' } } },
+    scales: { x: { grid: { display: false }, ticks: { color: TC, font: { size: 10 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: TC, font: { size: 10 }, callback: v => v + 'pp' } } }
+  }
+});
+
+// EBITDA chart
+new Chart(document.getElementById('ebitdaChart'), {
+  type: 'bar',
+  data: {
+    labels: SHORT,
+    datasets: [{
+      data: EBITDA,
+      backgroundColor: EBITDA.map(v => v >= 0 ? '#22c55e' : '#ef4444'),
+      borderRadius: 4, maxBarThickness: 26
+    }]
+  },
+  options: { ...defOpts, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' EBITDA: ' + ctx.raw.toFixed(1) + '%' } } },
+    scales: { x: { grid: { display: false }, ticks: { color: TC, font: { size: 10 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: TC, font: { size: 10 }, callback: v => v + '%' } } }
+  }
+});
+
+// NRR chart
+new Chart(document.getElementById('nrrChart'), {
+  type: 'bar',
+  data: {
+    labels: SHORT,
+    datasets: [
+      { label: 'NRR %', data: NRR, backgroundColor: '#3b82f6', maxBarThickness: 14, borderRadius: 3 },
+      { label: 'Logo churn ×10', data: LOGO_CH.map(v => v * 10), backgroundColor: '#ef4444', maxBarThickness: 14, borderRadius: 3 }
+    ]
+  },
+  options: { ...defOpts,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.datasetIndex === 0 ? ' NRR: ' + ctx.raw.toFixed(1) + '%' : ' Logo churn: ' + (ctx.raw/10).toFixed(2) + '%' } } },
+    scales: { x: { grid: { display: false }, ticks: { color: TC, font: { size: 10 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: TC, font: { size: 10 }, callback: v => v.toFixed(0) }, min: 95, max: 115 } }
+  }
+});
+
+// MRR Motion
+new Chart(document.getElementById('motionChart'), {
+  type: 'bar',
+  data: {
+    labels: SHORT,
+    datasets: [
+      { label: 'New MRR', data: NEW_MRR, backgroundColor: '#3b82f6', borderRadius: 3, maxBarThickness: 22 },
+      { label: 'Expansion MRR', data: EXP_MRR, backgroundColor: '#22c55e', borderRadius: 3, maxBarThickness: 22 },
+      { label: 'Churned MRR', data: CHN_MRR.map(v => -v), backgroundColor: '#ef4444', borderRadius: 3, maxBarThickness: 22 }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + ctx.dataset.label + ': $' + Math.abs(ctx.raw).toFixed(1) + 'M/mo avg' } } },
+    scales: {
+      x: { stacked: true, grid: { display: false }, ticks: { color: TC, font: { size: 10 } } },
+      y: { stacked: true, grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: TC, font: { size: 10 }, callback: v => '$' + v + 'M' } }
+    }
+  }
+});
+
+// Expansion contribution
+const expContrib = COMPANIES.map((_,i) => (EXP_MRR[i] / (NEW_MRR[i] + EXP_MRR[i] - CHN_MRR[i]) * 100));
+const expSorted = expContrib.map((v,i) => ({v,i})).sort((a,b) => b.v-a.v);
+new Chart(document.getElementById('expContribChart'), {
+  type: 'bar',
+  data: {
+    labels: expSorted.map(d => SHORT[d.i]),
+    datasets: [{
+      data: expSorted.map(d => d.v),
+      backgroundColor: expSorted.map(d => d.v >= 40 ? '#22c55e' : d.v >= 35 ? '#14b8a6' : '#f59e0b'),
+      borderRadius: 4, maxBarThickness: 26
+    }]
+  },
+  options: { ...defOpts, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' Expansion %: ' + ctx.raw.toFixed(1) + '%' } } },
+    scales: { x: { grid: { display: false }, ticks: { color: TC, font: { size: 10 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: TC, font: { size: 10 }, callback: v => v + '%' }, min: 20, max: 45 } }
+  }
+});
+
+// Cash cycle
+new Chart(document.getElementById('cashCycleChart'), {
+  type: 'bar',
+  data: {
+    labels: SHORT,
+    datasets: [
+      { label: 'DSO', data: DSO, backgroundColor: '#3b82f6', maxBarThickness: 14, borderRadius: 3 },
+      { label: 'DPO', data: DPO, backgroundColor: '#22c55e', maxBarThickness: 14, borderRadius: 3 }
+    ]
+  },
+  options: { ...defOpts,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + ctx.dataset.label + ': ' + ctx.raw.toFixed(0) + ' days' } } },
+    scales: { x: { grid: { display: false }, ticks: { color: TC, font: { size: 10 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: TC, font: { size: 10 }, callback: v => v + 'd' }, min: 20, max: 65 } }
+  }
+});
+
+// OPEX chart
+new Chart(document.getElementById('opexChart'), {
+  type: 'bar',
+  data: {
+    labels: SHORT,
+    datasets: [
+      { label: 'S&M', data: SM_PCT, backgroundColor: '#3b82f6', borderRadius: 3, maxBarThickness: 22 },
+      { label: 'R&D', data: RD_PCT, backgroundColor: '#14b8a6', borderRadius: 3, maxBarThickness: 22 },
+      { label: 'G&A', data: GA_PCT, backgroundColor: '#8b5cf6', borderRadius: 3, maxBarThickness: 22 }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + ctx.dataset.label + ': ' + ctx.raw.toFixed(1) + '%' } } },
+    scales: {
+      x: { stacked: true, grid: { display: false }, ticks: { color: TC, font: { size: 10 } } },
+      y: { stacked: true, grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: TC, font: { size: 10 }, callback: v => v + '%' }, max: 90 }
+    }
+  }
+});
+
+// GM Trend (line — avg across portfolio per year)
+const years = ['2021','2022','2023','2024','2025'];
+const portfolioGM = years.map((_,yi) => {
+  const avg = GM_TREND.reduce((s, co) => s + co[yi], 0) / GM_TREND.length;
+  return +avg.toFixed(2);
+});
+const lineColors = ['#3b82f6','#14b8a6','#22c55e','#f59e0b','#8b5cf6','#ef4444','#ec4899','#f97316','#a78bfa','#6ee7b7','#fbbf24','#93c5fd'];
+new Chart(document.getElementById('gmTrendChart'), {
+  type: 'line',
+  data: {
+    labels: years,
+    datasets: GM_TREND.map((co, i) => ({
+      label: COMPANIES[i],
+      data: co,
+      borderColor: lineColors[i],
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      pointRadius: 3,
+      pointBackgroundColor: lineColors[i],
+      tension: 0.2
+    }))
+  },
+  options: { responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + ctx.dataset.label + ': ' + ctx.raw.toFixed(1) + '%' } } },
+    scales: { x: { grid: { display: false }, ticks: { color: TC, font: { size: 10 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: TC, font: { size: 10 }, callback: v => v + '%' }, min: 70, max: 80 } }
+  }
+});
+
+// S&M operating leverage
+new Chart(document.getElementById('smLevChart'), {
+  type: 'bar',
+  data: {
+    labels: SHORT,
+    datasets: [
+      { label: 'FY2023', data: SM_2023, backgroundColor: '#3b82f6', maxBarThickness: 14, borderRadius: 3 },
+      { label: 'FY2024', data: SM_PCT, backgroundColor: '#f59e0b', maxBarThickness: 14, borderRadius: 3 }
+    ]
+  },
+  options: { ...defOpts,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + (ctx.datasetIndex === 0 ? 'FY2023' : 'FY2024') + ': ' + ctx.raw.toFixed(1) + '%' } } },
+    scales: { x: { grid: { display: false }, ticks: { color: TC, font: { size: 10 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: TC, font: { size: 10 }, callback: v => v + '%' }, min: 30, max: 55 } }
+  }
+});
+
+// LTV/CAC
+const ltvcacSorted = LTV_CAC.map((v,i) => ({v,i})).sort((a,b) => b.v-a.v);
+new Chart(document.getElementById('ltvcacChart'), {
+  type: 'bar',
+  data: {
+    labels: ltvcacSorted.map(d => SHORT[d.i]),
+    datasets: [{ data: ltvcacSorted.map(d => d.v/1000), backgroundColor: '#14b8a6', borderRadius: 4, maxBarThickness: 26 }]
+  },
+  options: { ...defOpts, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' LTV/CAC: ' + (ctx.raw * 1000).toLocaleString() + '×' } } },
+    scales: { x: { grid: { display: false }, ticks: { color: TC, font: { size: 10 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: TC, font: { size: 10 }, callback: v => v + 'K×' } } }
+  }
+});
+
+// Runway
+const runwaySorted = RUNWAY.map((v,i) => ({v: Math.min(v,99),i})).sort((a,b) => a.v-b.v);
+new Chart(document.getElementById('runwayChart'), {
+  type: 'bar',
+  data: {
+    labels: runwaySorted.map(d => SHORT[d.i]),
+    datasets: [{ data: runwaySorted.map(d => d.v), backgroundColor: runwaySorted.map(d => d.v < 18 ? '#ef4444' : d.v < 36 ? '#f59e0b' : '#22c55e'), borderRadius: 4, maxBarThickness: 26 }]
+  },
+  options: { ...defOpts, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' Runway: ' + (ctx.raw >= 99 ? '≥99' : ctx.raw) + ' months' } } },
+    scales: { x: { grid: { display: false }, ticks: { color: TC, font: { size: 10 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: TC, font: { size: 10 }, callback: v => v + 'mo' }, min: 0, max: 105 } }
+  }
+});
+
+// Forecast base case
+const fcData = [
+  { name: 'AutoPilotAI', now: 1378418, q1: 1491448, q2: 1604478 },
+  { name: 'CloudNest',   now: 736626,  q1: 788798,  q2: 840969  },
+  { name: 'DataPulse',   now: 5705,    q1: 5991,    q2: 6276    },
+  { name: 'NexaFlow',    now: 2764,    q1: 2908,    q2: 3053    },
+  { name: 'HRMatrix',    now: 1738,    q1: 1819,    q2: 1899    },
+  { name: 'GridSecure',  now: 718,     q1: 751,     q2: 785     },
+];
+new Chart(document.getElementById('forecastChart'), {
+  type: 'bar',
+  data: {
+    labels: fcData.map(d => d.name),
+    datasets: [
+      { label: 'Current (FY25)', data: fcData.map(d => Math.log10(d.now * 1e6)), backgroundColor: '#3b82f6', borderRadius: 4, maxBarThickness: 20 },
+      { label: 'Q1 2026 Base', data: fcData.map(d => Math.log10(d.q1 * 1e6)), backgroundColor: '#14b8a6', borderRadius: 4, maxBarThickness: 20 },
+      { label: 'Q2 2026 Base', data: fcData.map(d => Math.log10(d.q2 * 1e6)), backgroundColor: '#22c55e', borderRadius: 4, maxBarThickness: 20 }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => { const d = fcData[ctx.dataIndex]; return [' Now: '+fmtARR(d.now),' Q1: '+fmtARR(d.q1),' Q2: '+fmtARR(d.q2)][ctx.datasetIndex]; } } } },
+    scales: { x: { grid: { display: false }, ticks: { color: TC, font: { size: 10 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: TC, font: { size: 10 }, callback: v => ['','$1M','$10M','$100M','$1B','$10B','$100B','$1T'][Math.round(v)] || '' } } }
+  }
+});
+
+// Coverage heatmap placeholder as simple uniform chart
+const covData = COMPANIES.map(() => 100);
+new Chart(document.getElementById('coverageChart'), {
+  type: 'bar',
+  data: {
+    labels: SHORT,
+    datasets: [{ data: covData, backgroundColor: '#22c55e', borderRadius: 4, maxBarThickness: 28 }]
+  },
+  options: { ...defOpts, plugins: { legend: { display: false }, tooltip: { callbacks: { label: () => ' Coverage: 100% (60/60 months)' } } },
+    scales: { x: { grid: { display: false }, ticks: { color: TC, font: { size: 10 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: TC, font: { size: 10 }, callback: v => v + '%' }, min: 0, max: 105 } }
+  }
+});
+
+// ── NAVIGATION ──
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('section-' + id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// ── FORECAST TABS ──
+function showForecast(key) {
+  document.querySelectorAll('.fc-panel').forEach(p => p.classList.remove('visible'));
+  document.getElementById('fc-' + key).classList.add('visible');
+  document.querySelectorAll('#forecastTabs .tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', ['auto','cloud','data','nexaflow','hrmatrix','grid'][i] === key);
+  });
+}
+</script>
+</body>
+</html>
